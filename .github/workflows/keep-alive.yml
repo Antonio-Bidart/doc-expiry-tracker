@@ -1,0 +1,23 @@
+# GitHub desactiva los workflows programados si el repo no tiene actividad en 60 días.
+# Este workflow hace un commit vacío cada 50 días para mantener el repo activo.
+name: Keep Alive
+
+on:
+  schedule:
+    - cron: "0 10 1 * *"  # el 1ro de cada mes
+  workflow_dispatch:
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Commit de mantenimiento
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit --allow-empty -m "chore: keep-alive $(date -u +%Y-%m-%d)"
+          git push

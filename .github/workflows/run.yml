@@ -2,8 +2,8 @@ name: Doc Expiry Tracker
 
 on:
   schedule:
-    - cron: "0 12 * * *"  # 12:00 UTC = 09:00 ARG
-  workflow_dispatch:
+    - cron: "0 12 * * *"   # 12:00 UTC = 09:00 ARG, todos los días
+  workflow_dispatch:         # permite correrlo a mano desde Actions
 
 jobs:
   run:

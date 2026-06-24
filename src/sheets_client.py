@@ -9,22 +9,26 @@ COL_NOTIF_30 = 4
 COL_NOTIF_15 = 5
 COL_ULTIMA_DIARIA = 6
 
-HEADER_ROW = 1  # fila 1 es el encabezado
+_sheet_cache = None
 
 
-def _open_sheet():
-    gc = gspread.service_account_from_dict(config.SERVICE_ACCOUNT_INFO)
-    return gc.open_by_key(config.SHEET_ID)
+def _open_worksheet():
+    """Abre el worksheet y lo cachea para evitar múltiples conexiones en la misma corrida."""
+    global _sheet_cache
+    if _sheet_cache is None:
+        gc = gspread.service_account_from_dict(config.SERVICE_ACCOUNT_INFO)
+        sh = gc.open_by_key(config.SHEET_ID)
+        _sheet_cache = sh.worksheet(config.DOCUMENTOS_TAB)
+    return _sheet_cache
 
 
 def get_documentos():
     """
-    Lee la pestaña Documentos y devuelve lista de dicts con:
-    row_index (fila real en el sheet, empezando en 2), nombre, vencimiento,
-    estado, notif_30, notif_15, ultima_diaria.
+    Lee la pestaña Documentos. Devuelve lista de dicts con row_index incluido.
+    numericise_ignore=["all"] evita que gspread convierta fechas o números
+    automáticamente (lo que causaría problemas al comparar strings).
     """
-    sh = _open_sheet()
-    ws = sh.worksheet(config.DOCUMENTOS_TAB)
+    ws = _open_worksheet()
     rows = ws.get_all_records(numericise_ignore=["all"])
 
     documentos = []
@@ -33,7 +37,7 @@ def get_documentos():
         if not nombre:
             continue
         documentos.append({
-            "row_index": i + 2,  # fila real (1 es header, datos desde 2)
+            "row_index": i + 2,  # fila real (1 = header, datos desde fila 2)
             "nombre": nombre,
             "vencimiento": str(row.get("Vencimiento", "")).strip(),
             "estado": str(row.get("Estado", "Activo")).strip(),
@@ -45,19 +49,17 @@ def get_documentos():
 
 
 def marcar_notif_30(row_index: int):
-    sh = _open_sheet()
-    ws = sh.worksheet(config.DOCUMENTOS_TAB)
-    ws.update_cell(row_index, COL_NOTIF_30, "Sí")
+    _open_worksheet().update_cell(row_index, COL_NOTIF_30, "Sí")
 
 
 def marcar_notif_15(row_index: int):
-    sh = _open_sheet()
-    ws = sh.worksheet(config.DOCUMENTOS_TAB)
-    ws.update_cell(row_index, COL_NOTIF_15, "Sí")
+    _open_worksheet().update_cell(row_index, COL_NOTIF_15, "Sí")
 
 
 def marcar_ultima_diaria(row_index: int, fecha_hoy: str):
     """fecha_hoy en formato YYYY-MM-DD"""
-    sh = _open_sheet()
-    ws = sh.worksheet(config.DOCUMENTOS_TAB)
-    ws.update_cell(row_index, COL_ULTIMA_DIARIA, fecha_hoy)
+    _open_worksheet().update_cell(row_index, COL_ULTIMA_DIARIA, fecha_hoy)
+
+
+def marcar_estado_vencido(row_index: int):
+    _open_worksheet().update_cell(row_index, COL_ESTADO, "Vencido")
